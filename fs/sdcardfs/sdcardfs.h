@@ -46,7 +46,6 @@
 #include <linux/string.h>
 #include <linux/list.h>
 #include "multiuser.h"
-#include <linux/uidgid.h>
 
 /* the file system name */
 #define SDCARDFS_NAME "sdcardfs"
@@ -75,7 +74,6 @@
 #define AID_PACKAGE_INFO  1027
 
 
-
 /*
  * Permissions are handled by our permission function.
  * We don't want anyone who happens to look at our inode value to prematurely
@@ -83,11 +81,11 @@
  * used.
  */
 #define fixup_tmp_permissions(x)	\
-	do {						\
-		(x)->i_uid = SDCARDFS_I(x)->data->d_uid;	\
-		(x)->i_gid = AID_SDCARD_RW;	\
-		(x)->i_mode = ((x)->i_mode & S_IFMT) | 0775;\
-	} while (0)
+do {						\
+	(x)->i_uid = KUIDT_INIT(SDCARDFS_I(x)->data->d_uid);	\
+	(x)->i_gid = KGIDT_INIT(AID_SDCARD_RW);	\
+	(x)->i_mode = ((x)->i_mode & S_IFMT) | 0775;\
+} while (0)
 
 /* Android 5.0 support */
 
@@ -124,7 +122,7 @@ struct sdcardfs_inode_data;
 
 /* Do not directly use this function. Use OVERRIDE_CRED() instead. */
 const struct cred *override_fsids(struct sdcardfs_sb_info *sbi,
-			struct sdcardfs_inode_data *data);
+								  struct sdcardfs_inode_data *data);
 /* Do not directly use this function, use REVERT_CRED() instead. */
 void revert_fsids(const struct cred *old_cred);
 
@@ -146,11 +144,11 @@ extern void sdcardfs_destroy_dentry_cache(void);
 extern int new_dentry_private_data(struct dentry *dentry);
 extern void free_dentry_private_data(struct dentry *dentry);
 extern struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
-				unsigned int flags);
+									  unsigned int flags);
 extern struct inode *sdcardfs_iget(struct super_block *sb,
-				 struct inode *lower_inode, userid_t id);
+								   struct inode *lower_inode, userid_t id);
 extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
-			    struct path *lower_path, userid_t id);
+							  struct path *lower_path, userid_t id);
 
 /* file private data */
 struct sdcardfs_file_info {
@@ -209,7 +207,7 @@ struct sdcardfs_vfsmount_options {
 };
 
 extern int parse_options_remount(struct super_block *sb, char *options, int silent,
-		struct sdcardfs_vfsmount_options *vfsopts);
+								 struct sdcardfs_vfsmount_options *vfsopts);
 
 /* sdcardfs super-block data in memory */
 struct sdcardfs_sb_info {
@@ -277,7 +275,7 @@ static inline struct super_block *sdcardfs_lower_super(
 }
 
 static inline void sdcardfs_set_lower_super(struct super_block *sb,
-					  struct super_block *val)
+											struct super_block *val)
 {
 	SDCARDFS_SB(sb)->lower_sb = val;
 }
@@ -294,7 +292,7 @@ static inline void pathcpy(struct path *dst, const struct path *src)
  */
 #define SDCARDFS_DENT_FUNC(pname) \
 static inline void sdcardfs_get_##pname(const struct dentry *dent, \
-					struct path *pname) \
+struct path *pname) \
 { \
 	spin_lock(&SDCARDFS_D(dent)->lock); \
 	pathcpy(pname, &SDCARDFS_D(dent)->pname); \
@@ -303,13 +301,13 @@ static inline void sdcardfs_get_##pname(const struct dentry *dent, \
 	return; \
 } \
 static inline void sdcardfs_put_##pname(const struct dentry *dent, \
-					struct path *pname) \
+struct path *pname) \
 { \
 	path_put(pname); \
 	return; \
 } \
 static inline void sdcardfs_set_##pname(const struct dentry *dent, \
-					struct path *pname) \
+struct path *pname) \
 { \
 	spin_lock(&SDCARDFS_D(dent)->lock); \
 	pathcpy(&SDCARDFS_D(dent)->pname, pname); \
@@ -336,7 +334,7 @@ static inline void sdcardfs_put_reset_##pname(const struct dentry *dent) \
 		path_put(&pname); \
 	} else \
 		spin_unlock(&SDCARDFS_D(dent)->lock); \
-	return; \
+		return; \
 }
 
 SDCARDFS_DENT_FUNC(lower_path)
@@ -345,11 +343,11 @@ SDCARDFS_DENT_FUNC(orig_path)
 static inline bool sbinfo_has_sdcard_magic(struct sdcardfs_sb_info *sbinfo)
 {
 	return sbinfo && sbinfo->sb
-			&& sbinfo->sb->s_magic == SDCARDFS_SUPER_MAGIC;
+	&& sbinfo->sb->s_magic == SDCARDFS_SUPER_MAGIC;
 }
 
 static inline struct sdcardfs_inode_data *data_get(
-		struct sdcardfs_inode_data *data)
+	struct sdcardfs_inode_data *data)
 {
 	if (data)
 		kref_get(&data->refcount);
@@ -357,7 +355,7 @@ static inline struct sdcardfs_inode_data *data_get(
 }
 
 static inline struct sdcardfs_inode_data *top_data_get(
-		struct sdcardfs_inode_info *info)
+	struct sdcardfs_inode_info *info)
 {
 	struct sdcardfs_inode_data *top_data;
 
@@ -386,7 +384,7 @@ static inline void release_own_data(struct sdcardfs_inode_info *info)
 }
 
 static inline void set_top(struct sdcardfs_inode_info *info,
-			struct sdcardfs_inode_info *top_owner)
+						   struct sdcardfs_inode_info *top_owner)
 {
 	struct sdcardfs_inode_data *old_top;
 	struct sdcardfs_inode_data *new_top = NULL;
@@ -403,8 +401,8 @@ static inline void set_top(struct sdcardfs_inode_info *info,
 }
 
 static inline int get_gid(struct vfsmount *mnt,
-		struct super_block *sb,
-		struct sdcardfs_inode_data *data)
+						  struct super_block *sb,
+						  struct sdcardfs_inode_data *data)
 {
 	struct sdcardfs_vfsmount_options *vfsopts = mnt->data;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(sb);
@@ -422,8 +420,8 @@ static inline int get_gid(struct vfsmount *mnt,
 }
 
 static inline int get_mode(struct vfsmount *mnt,
-		struct sdcardfs_inode_info *info,
-		struct sdcardfs_inode_data *data)
+						   struct sdcardfs_inode_info *info,
+						   struct sdcardfs_inode_data *data)
 {
 	int owner_mode;
 	int filtered_mode;
@@ -433,14 +431,14 @@ static inline int get_mode(struct vfsmount *mnt,
 
 	if (data->perm == PERM_PRE_ROOT) {
 		/* Top of multi-user view should always be visible to ensure
-		* secondary users can traverse inside.
-		*/
+		 * secondary users can traverse inside.
+		 */
 		visible_mode = 0711;
 	} else if (data->under_android) {
 		/* Block "other" access to Android directories, since only apps
-		* belonging to a specific user should be in there; we still
-		* leave +x open for the default view.
-		*/
+		 * belonging to a specific user should be in there; we still
+		 * leave +x open for the default view.
+		 */
 		if (opts->gid == AID_SDCARD_RW)
 			visible_mode = visible_mode & ~0006;
 		else
@@ -464,7 +462,7 @@ static inline int has_graft_path(const struct dentry *dent)
 }
 
 static inline void sdcardfs_get_real_lower(const struct dentry *dent,
-						struct path *real_lower)
+										   struct path *real_lower)
 {
 	/* in case of a local obb dentry
 	 * the orig_path should be returned
@@ -476,7 +474,7 @@ static inline void sdcardfs_get_real_lower(const struct dentry *dent,
 }
 
 static inline void sdcardfs_put_real_lower(const struct dentry *dent,
-						struct path *real_lower)
+										   struct path *real_lower)
 {
 	if (has_graft_path(dent))
 		sdcardfs_put_orig_path(dent, real_lower);
@@ -505,7 +503,7 @@ struct limit_search {
 };
 
 extern void setup_derived_state(struct inode *inode, perm_t perm,
-			userid_t userid, uid_t uid);
+								userid_t userid, uid_t uid);
 extern void get_derived_permission(struct dentry *parent, struct dentry *dentry);
 extern void get_derived_permission_new(struct dentry *parent, struct dentry *dentry, const struct qstr *name);
 extern void fixup_perms_recursive(struct dentry *dentry, struct limit_search *limit);
@@ -554,17 +552,17 @@ static inline int prepare_dir(const char *path_s, uid_t uid, gid_t gid, mode_t m
 		goto out_dput;
 	}
 
-	attrs.ia_uid = from_kuid(current_user_ns(), make_kuid(current_user_ns(), uid));
-	attrs.ia_gid = from_kgid(current_user_ns(), make_kgid(current_user_ns(), gid));
+	attrs.ia_uid = KUIDT_INIT(uid);
+	attrs.ia_gid = KGIDT_INIT(gid);
 	attrs.ia_valid = ATTR_UID | ATTR_GID;
 	mutex_lock(&dent->d_inode->i_mutex);
 	notify_change2(parent.mnt, dent, &attrs);
 	mutex_unlock(&dent->d_inode->i_mutex);
 
-out_dput:
+	out_dput:
 	dput(dent);
 
-out_unlock:
+	out_unlock:
 	/* parent dentry locked by lookup_create */
 	mutex_unlock(&parent.dentry->d_inode->i_mutex);
 	path_put(&parent);
@@ -624,9 +622,9 @@ static inline void sdcardfs_copy_and_fix_attrs(struct inode *dest, const struct 
 {
 
 	dest->i_mode = (src->i_mode  & S_IFMT) | S_IRWXU | S_IRWXG |
-			S_IROTH | S_IXOTH; /* 0775 */
-	dest->i_uid = from_kuid(current_user_ns(), make_kuid(current_user_ns(), SDCARDFS_I(dest)->data->d_uid));
-	dest->i_gid = from_kgid(current_user_ns(), make_kgid(current_user_ns(), AID_SDCARD_RW));
+	S_IROTH | S_IXOTH; /* 0775 */
+	dest->i_uid = KUIDT_INIT(SDCARDFS_I(dest)->data->d_uid);
+	dest->i_gid = KGIDT_INIT(AID_SDCARD_RW);
 	dest->i_rdev = src->i_rdev;
 	dest->i_atime = src->i_atime;
 	dest->i_mtime = src->i_mtime;
