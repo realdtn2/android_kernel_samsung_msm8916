@@ -554,8 +554,8 @@ static inline int prepare_dir(const char *path_s, uid_t uid, gid_t gid, mode_t m
 		goto out_dput;
 	}
 
-	attrs.ia_uid = __kuid_val(uid);
-	attrs.ia_gid = __kgid_val(gid);
+	attrs.ia_uid = __kuid_val(make_kuid(current_user_ns(), uid));
+	attrs.ia_gid = __kgid_val(make_kgid(current_user_ns(), gid));
 	attrs.ia_valid = ATTR_UID | ATTR_GID;
 	mutex_lock(&dent->d_inode->i_mutex);
 	notify_change2(parent.mnt, dent, &attrs);
@@ -625,8 +625,8 @@ static inline void sdcardfs_copy_and_fix_attrs(struct inode *dest, const struct 
 
 	dest->i_mode = (src->i_mode  & S_IFMT) | S_IRWXU | S_IRWXG |
 			S_IROTH | S_IXOTH; /* 0775 */
-	dest->i_uid = __kuid_val(SDCARDFS_I(dest)->data->d_uid);
-	dest->i_gid = __kgid_val(AID_SDCARD_RW);
+	dest->i_uid = __kuid_val(make_kuid(current_user_ns(), SDCARDFS_I(dest)->data->d_uid));
+	dest->i_gid = __kgid_val(make_kgid(current_user_ns(), AID_SDCARD_RW));
 	dest->i_rdev = src->i_rdev;
 	dest->i_atime = src->i_atime;
 	dest->i_mtime = src->i_mtime;
