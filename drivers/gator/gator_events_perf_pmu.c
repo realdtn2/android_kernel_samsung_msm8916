@@ -6,6 +6,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/err.h>
 #include "gator.h"
 
 /* gator_events_armvX.c is used for Linux 2.6.x */

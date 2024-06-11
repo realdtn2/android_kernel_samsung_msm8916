@@ -9,6 +9,7 @@
 
 #include "gator.h"
 
+#include <linux/err.h>
 #include <linux/hardirq.h>
 #include <linux/kthread.h>
 #include <linux/sched.h>

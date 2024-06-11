@@ -11,6 +11,7 @@
 #define PROTOCOL_VERSION 20
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
+#include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/sched.h>

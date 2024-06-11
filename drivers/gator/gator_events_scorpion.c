@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <linux/err.h>
 #include "gator.h"
 
 /* gator_events_perf_pmu.c is used if perf is supported */
